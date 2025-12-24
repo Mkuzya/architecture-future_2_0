@@ -1,0 +1,51 @@
+@startuml
+skinparam dpi 150
+left to right direction
+
+title C4 Containers - Целевая архитектура Будущее 2.0
+
+actor "Сотрудники\nклиник" as UserClinic
+actor "Бизнес-\nпользователи" as UserBiz
+actor "Финтех\nсервисы" as FintechExt
+actor "ИИ-сервисы" as AIExt
+
+rectangle "Система Будущее 2.0\n\nКомплексная платформа для медицинских и\nфинансовых сервисов с аналитикой" as System {
+  rectangle "Портал самообслуживания\n(Data Mart Portal)\n\nВеб-приложение для создания\nи просмотра отчётов" as Portal
+  rectangle "API Gateway\n\nЕдиная точка входа для\nвсех API запросов" as APIGW
+  rectangle "Финтех-сервисы\n(Golang, Java)\n\nБанковские операции,\nкредиты, платежи" as Fintech
+  rectangle "ИИ-сервисы\n(Python)\n\nАнализ медицинских данных,\nдиагностика" as AI
+  rectangle "Витрина данных\n(Data Mart)\n\nАгрегированные данные для\nаналитики и отчётов" as DataMart
+  rectangle "ETL сервисы\n\nИзвлечение, трансформация\nи загрузка данных" as ETL
+  rectangle "Медицинская система\n(Legacy DWH)\n\nХранение медицинских карт,\nисторий болезни" as MedicalDWH
+  rectangle "Шина данных\n(Event Bus)\n\nАсинхронная коммуникация\nмежду сервисами" as EventBus
+  rectangle "Облачное хранилище\n(Object Storage)\n\nХранение данных, резервные копии" as ObjectStorage
+  rectangle "BI система\n(Power BI)\n\nВизуализация и аналитика" as BI
+}
+
+UserClinic --> Portal : Работа с отчётами
+UserBiz --> Portal : Создание отчётов
+FintechExt --> APIGW : API запросы
+AIExt --> APIGW : API запросы
+
+Portal --> APIGW : HTTP/HTTPS
+APIGW --> Fintech : API
+APIGW --> AI : API
+
+Portal --> DataMart : SQL
+BI --> DataMart : SQL
+ETL --> DataMart : SQL
+ETL --> MedicalDWH : SQL
+
+Fintech --> EventBus : Events
+AI --> EventBus : Events
+ETL --> ObjectStorage : Object Storage API
+
+note right of System
+Бизнес-сценарии:
+- Быстрая подготовка отчётности
+- Независимое развитие финтех
+- Независимое развитие ИИ
+- Масштабирование для новых бизнесов
+end note
+
+@enduml

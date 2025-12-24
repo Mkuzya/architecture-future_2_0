@@ -1,0 +1,123 @@
+@startuml
+skinparam dpi 150
+left to right direction
+
+title Диаграмма автоматизации развёртывания инфраструктуры\n(Infrastructure as Code с Terraform)
+
+package "Yandex Cloud" {
+  package "VPC Network: future-2-0-network\n(10.0.0.0/16)" #LightBlue {
+    rectangle "Public Subnet\n(10.0.1.0/24)\nru-central1-a" #LightGreen {
+      rectangle "Portal VM\n2 vCPU, 4GB RAM\nBoot: 30GB SSD\nNAT: Enabled" as Portal
+      rectangle "API Gateway VM\n2 vCPU, 4GB RAM\nBoot: 30GB SSD\nNAT: Enabled" as APIGW
+    }
+    
+    rectangle "Private Subnet 1\n(10.0.2.0/24)\nru-central1-a\nRoute Table: private-route-table-1" as PrivateSubnet1 #LightYellow {
+      rectangle "ETL VM\n4 vCPU, 8GB RAM\nBoot: 50GB SSD" as ETL
+      rectangle "Fintech VM\n4 vCPU, 8GB RAM\nBoot: 50GB SSD" as Fintech
+    }
+    
+    rectangle "Private Subnet 2\n(10.0.3.0/24)\nru-central1-a\nRoute Table: private-route-table-2" as PrivateSubnet2 #LightYellow {
+      rectangle "AI Services VM\n4 vCPU, 8GB RAM\nBoot: 100GB SSD" as AI
+      rectangle "Data Mart VM\n2 vCPU, 4GB RAM\nBoot: 20GB SSD" as DataMart
+      rectangle "Data Mart Disk\n20GB Network-HDD\n(Secondary)" as DataMartDisk
+    }
+    
+    rectangle "Private Subnet 3\n(10.0.4.0/24)\nru-central1-a\nRoute Table: private-route-table-3" as PrivateSubnet3 #LightYellow {
+      rectangle "Legacy DWH VM\n2 vCPU, 8GB RAM\nBoot: 30GB SSD" as LegacyDWH
+      rectangle "Legacy DWH Disk\n20GB Network-HDD\n(Secondary)" as LegacyDWHDisk
+      rectangle "Event Bus VM\n2 vCPU, 4GB RAM\nBoot: 30GB SSD" as EventBus
+    }
+    
+    rectangle "NAT Gateway\n(nat-gateway)\n0.0.0.0/0 -> Internet" as NAT
+  }
+  
+  rectangle "Object Storage\nBucket: future-2-0-storage\n(Private by default)" as ObjectStorage
+}
+
+cloud "Internet" as Internet
+
+' Network connections
+Internet --> Portal : HTTP/HTTPS\n(Direct NAT)
+Internet --> APIGW : API Requests\n(Direct NAT)
+Portal --> APIGW : Internal Network
+APIGW --> Fintech : API Calls\n(Private Network)
+APIGW --> AI : API Calls\n(Private Network)
+
+' Data flow connections
+ETL --> DataMart : SQL Data Load\n(Private Network)
+ETL --> LegacyDWH : SQL Data Extract\n(Private Network)
+ETL --> ObjectStorage : Object Storage API\n(Backups/Archives)
+
+' Disk attachments
+DataMart --> DataMartDisk : Attached\n(Secondary Disk)
+LegacyDWH --> LegacyDWHDisk : Attached\n(Secondary Disk)
+
+' Event bus connections
+Fintech --> EventBus : Events\n(Private Network)
+AI --> EventBus : Events\n(Private Network)
+
+' NAT Gateway routing (all private subnets route through NAT)
+PrivateSubnet1 ..> NAT : Route Table\n0.0.0.0/0 -> NAT
+PrivateSubnet2 ..> NAT : Route Table\n0.0.0.0/0 -> NAT
+PrivateSubnet3 ..> NAT : Route Table\n0.0.0.0/0 -> NAT
+NAT --> Internet : Outbound Traffic
+
+note right of Portal
+  **Управляется Terraform:**
+  ✅ VM создание и конфигурация
+  ✅ Boot disk (30GB SSD)
+  ✅ Network interface с NAT
+  ✅ SSH ключи (metadata)
+  ✅ Platform: standard-v2
+end note
+
+note right of DataMartDisk
+  **Управляется Terraform:**
+  ✅ Disk создание (20GB HDD)
+  ✅ Тип: network-hdd
+  ✅ Присоединение к Data Mart VM
+  ✅ Zone: ru-central1-a
+end note
+
+note right of ObjectStorage
+  **Управляется Terraform:**
+  ✅ Bucket создание
+  ✅ Имя: future-2-0-storage
+  ✅ Folder ID настройка
+  ✅ Доступ: Private (по умолчанию)
+end note
+
+note right of NAT
+  **Управляется Terraform:**
+  ✅ NAT Gateway создание
+  ✅ Route Tables для приватных подсетей
+  ✅ Маршрутизация 0.0.0.0/0 -> NAT
+  ✅ Lifecycle: ignore_changes
+end note
+
+note bottom
+  **Компоненты, управляемые Terraform (20 ресурсов):**
+  
+  **Сеть:**
+  ✅ VPC Network (future-2-0-network)
+  ✅ 4 Subnets (1 Public + 3 Private)
+  ✅ NAT Gateway (nat-gateway)
+  ✅ 3 Route Tables (для приватных подсетей)
+  
+  **Вычислительные ресурсы:**
+  ✅ 8 Virtual Machines (Portal, API Gateway, ETL, Fintech, AI Services, Data Mart, Legacy DWH, Event Bus)
+  ✅ 8 Boot Disks (встроенные в VM)
+  ✅ 2 Additional Disks (Data Mart Disk, Legacy DWH Disk)
+  
+  **Хранилище:**
+  ✅ Object Storage Bucket (future-2-0-storage)
+  
+  **Развёртывается вручную:**
+  ⚙️ Приложения и сервисы на VM
+  ⚙️ Конфигурация приложений
+  ⚙️ Данные в базах данных
+  ⚙️ SSL сертификаты
+  ⚙️ Мониторинг и логирование
+end note
+
+@enduml

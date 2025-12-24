@@ -3,3 +3,15 @@
 ._*
 .Spotlight-V100
 .Trashes
+
+# Secrets and keys
+sa-key.json
+# terraform.tfvars - разрешён, так как не содержит секретов (токены закомментированы)
+*.key
+*.pem
+terraform.tfstate
+terraform.tfstate.*
+.terraform/
+.terraform.lock.hcl
+test_ssh_key
+test_ssh_key.pub
